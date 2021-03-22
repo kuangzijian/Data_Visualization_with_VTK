@@ -17,8 +17,8 @@ polyData = reader.GetOutput()
 modelCenter = polyData.GetCenter()
 plane.SetOrigin(modelCenter)
 
-# Set the normal vector to [1, 0, 1]
-plane.SetNormal(1, 0, 1)
+# Set the normal vector to [1, 15, 1]
+plane.SetNormal(1, 15, 1)
 
 # Clip the data using vtkClipPolyData class
 clipper = vtk.vtkClipPolyData()
@@ -31,7 +31,7 @@ clipper.GenerateClippedOutputOn()
 
 # Set the clipped out part of the 3D model
 clippedMapper = vtk.vtkPolyDataMapper()
-clippedMapper.SetInputConnection(clipper.GetOutputPort())
+clippedMapper.SetInputData(clipper.GetClippedOutput())
 clippedMapper.ScalarVisibilityOff()
 backProp = vtk.vtkProperty()
 backProp.SetDiffuseColor(tomato)
@@ -44,7 +44,7 @@ clippedActor.GetProperty().SetRepresentationToSurface()
 
 # Set the remaining part of the 3D model
 remainingMapper = vtk.vtkPolyDataMapper()
-remainingMapper.SetInputData(clipper.GetClippedOutput())
+remainingMapper.SetInputConnection(clipper.GetOutputPort())
 remainingMapper.ScalarVisibilityOff()
 remainingActor = vtk.vtkActor()
 remainingActor.SetMapper(remainingMapper)
@@ -67,6 +67,7 @@ cutPoly.SetPolys(cutStrips.GetOutput().GetLines())
 # Use vtkTriangleFilter class for triangulation
 cutTriangles = vtk.vtkTriangleFilter()
 cutTriangles.SetInputData(cutPoly)
+cutTriangles.Update()
 cutMapper = vtk.vtkPolyDataMapper()
 cutMapper.SetInputData(cutPoly)
 cutMapper.SetInputConnection(cutTriangles.GetOutputPort())
@@ -108,6 +109,19 @@ ren.AddActor(cutActor)
 ren.AddActor(planeActor)
 
 iren.Initialize()
+
+# Provide the number of vertices for the original model, clipped out part, remaining part,
+# and intersection part of the model
+clippedPart = vtk.vtkCleanPolyData()
+clippedPart.SetInputConnection(clipper.GetOutputPort())
+clippedPart.Update()
+remainingPart = vtk.vtkCleanPolyData()
+remainingPart.SetInputData(clipper.GetClippedOutput())
+remainingPart.Update()
+print("Vertices for the original:" + str(polyData.GetNumberOfPoints()))
+print("Vertices for the clipped out part:" + str(remainingPart.GetOutput().GetNumberOfPoints()))
+print("Vertices for the remaining part:" + str(clippedPart.GetOutput().GetNumberOfPoints()))
+print("Vertices for the intersection part:" + str(cutTriangles.GetOutput().GetNumberOfPoints()))
 
 renWin.Render()
 iren.Start()
