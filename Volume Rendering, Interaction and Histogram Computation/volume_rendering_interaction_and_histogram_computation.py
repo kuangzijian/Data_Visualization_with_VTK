@@ -73,12 +73,12 @@ sampledCTActor.SetMapper(sampledCTMapper)
 ren[1].AddActor(sampledCTActor)
 
 def UpdateSampleHistogram(obj, ev):
+    # For viewport 3, construct the histogram of the sampled data using vtkImageAccumulate class
+    histogram = vtk.vtkImageAccumulate()
+
     # retrieve the scalar range of the plane widget using GetScalarRange()
     range = obj.GetResliceOutput().GetScalarRange()
     r = int(range[1] - range[0])
-
-    # For viewport 3, construct the histogram of the sampled data using vtkImageAccumulate class
-    histogram = vtk.vtkImageAccumulate()
 
     # using GetResliceOutput() function to get sampled data from vtkImagePlaneWidget object
     histogram.SetInputData(obj.GetResliceOutput())
