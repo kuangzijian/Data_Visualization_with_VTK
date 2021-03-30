@@ -1,6 +1,7 @@
 import vtk
 
-dir_ = r"CT" # Specify the directory which contains the CT image data
+# Specify the directory which contains the CT image data
+dir_ = r"CT"
 
 # Read CT dataset using vtkDICOMImageReader class
 reader = vtk.vtkDICOMImageReader()
@@ -25,17 +26,32 @@ alphaChannelFunc.AddPoint(180, 0.53)
 alphaChannelFunc.AddPoint(260, 0.84)
 alphaChannelFunc.AddPoint(3071, 0.89)
 
-# Create an interactable plane widget using vtkImagePlaneWidget class
-volume = vtk.vtkVolume()
-ren = vtk.vtkRenderer()
+# Set render window
 renWin = vtk.vtkRenderWindow()
-renWin.AddRenderer(ren)
+renWin.SetSize(1200, 800)
+
+# Set renderer for 3 viewports
+ren = [vtk.vtkRenderer() for i in range(3)]
+ren[0].SetViewport(0, 0, 2/3, 1)
+renWin.AddRenderer(ren[0])
+ren[1].SetViewport(2/3, 1/2, 1, 1)
+renWin.AddRenderer(ren[1])
+ren[2].SetViewport(2/3, 0, 1, 1/2)
+renWin.AddRenderer(ren[2])
+
+# For viewport 1, create an interactable plane widget using vtkImagePlaneWidget class
 iren = vtk.vtkRenderWindowInteractor()
 iren.SetRenderWindow(renWin)
-renWin.SetSize(800,800)
+volume = vtk.vtkVolume()
+planeWidget = vtk.vtkImagePlaneWidget()
+planeWidget.SetInteractor(iren)
+planeWidget.SetCurrentRenderer(ren[0])
+planeWidget.SetInputData(reader.GetOutput())
+planeWidget.SetPlaneOrientationToZAxes()
+planeWidget.On()
 
 # Define volume mapper
-volumeMapper = vtk.vtkSmartVolumeMapper()  
+volumeMapper = vtk.vtkSmartVolumeMapper()
 volumeMapper.SetInputConnection(reader.GetOutputPort())
 
 # Define volume properties
@@ -46,10 +62,43 @@ volumeProperty.ShadeOn()
 
 # Set the mapper and volume properties
 volume.SetMapper(volumeMapper)
-volume.SetProperty(volumeProperty)  
+volume.SetProperty(volumeProperty)
+ren[0].AddVolume(volume)
 
-# Add the volume to the renderer
-ren.AddVolume(volume)
+# In viewport 2, display the content of the sampled CT dataset using GetResliceOutput() function
+sampledCTMapper = vtk.vtkImageMapper()
+sampledCTMapper.SetInputData(planeWidget.GetResliceOutput())
+sampledCTActor = vtk.vtkActor2D()
+sampledCTActor.SetMapper(sampledCTMapper)
+ren[1].AddActor(sampledCTActor)
+
+def UpdateSampleHistogram(obj, ev):
+    # retrieve the scalar range of the plane widget using GetScalarRange()
+    range = obj.GetResliceOutput().GetScalarRange()
+    r = int(range[1] - range[0])
+
+    # For viewport 3, construct the histogram of the sampled data using vtkImageAccumulate class
+    histogram = vtk.vtkImageAccumulate()
+
+    # using GetResliceOutput() function to get sampled data from vtkImagePlaneWidget object
+    histogram.SetInputData(obj.GetResliceOutput())
+    histogram.SetComponentExtent(0, r - 1, 0, 0, 0, 0)
+    histogram.SetComponentOrigin(range[0], 0.0, 0.0)
+    histogram.SetComponentSpacing(100, 0, 0)
+    histogram.Update()
+
+    # In viewport 3, using vtkXYPlotActor class for plotting the histogram
+    plot = vtk.vtkXYPlotActor()
+    plot.AddDataSetInputConnection(histogram.GetOutputPort())
+    plot.SetXRange(range[0], range[1])
+    plot.SetLabelFormat("%g")
+    plot.SetXTitle("Scalar Value")
+    plot.SetYTitle("Frequency")
+    plot.SetXValuesToValue()
+    ren[2].AddActor(plot)
+
+# Ensure that the sample image and histogram are updated when user moves the image sampling plane in viewport 1
+planeWidget.AddObserver('EndInteractionEvent', UpdateSampleHistogram)
 
 # Render the scene
 renWin.Render()
