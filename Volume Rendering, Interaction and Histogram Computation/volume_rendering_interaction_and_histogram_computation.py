@@ -74,22 +74,22 @@ ren[1].AddActor(sampledCTActor)
 
 def UpdateSampleHistogram(obj, ev):
     # For viewport 3, construct the histogram of the sampled data using vtkImageAccumulate class
-    histogram = vtk.vtkImageAccumulate()
+    accumulate = vtk.vtkImageAccumulate()
 
     # retrieve the scalar range of the plane widget using GetScalarRange()
     range = obj.GetResliceOutput().GetScalarRange()
     r = int(range[1] - range[0])
 
     # using GetResliceOutput() function to get sampled data from vtkImagePlaneWidget object
-    histogram.SetInputData(obj.GetResliceOutput())
-    histogram.SetComponentExtent(0, r - 1, 0, 0, 0, 0)
-    histogram.SetComponentOrigin(range[0], 0.0, 0.0)
-    histogram.SetComponentSpacing(100, 0, 0)
-    histogram.Update()
+    accumulate.SetInputData(obj.GetResliceOutput())
+    accumulate.SetComponentExtent(0, r - 1, 0, 0, 0, 0)
+    accumulate.SetComponentOrigin(range[0], 0.0, 0.0)
+    accumulate.SetComponentSpacing(100, 0, 0)
+    accumulate.Update()
 
     # In viewport 3, using vtkXYPlotActor class for plotting the histogram
     plot = vtk.vtkXYPlotActor()
-    plot.AddDataSetInputConnection(histogram.GetOutputPort())
+    plot.AddDataSetInputConnection(accumulate.GetOutputPort())
     plot.SetXRange(range[0], range[1])
     plot.SetLabelFormat("%g")
     plot.SetXTitle("Scalar Value")
