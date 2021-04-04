@@ -8,6 +8,12 @@ reader = vtk.vtkDICOMImageReader()
 reader.SetDirectoryName(dir_)
 reader.Update()
 
+# Retrieve CT dataset details
+print('Dimension: ' + str(reader.GetOutput().GetDimensions()))
+print('Voxel Resolution: ' + str(reader.GetOutput().GetSpacing()))
+print('Minimum & Maximum Pixel Intensities: ' + str(reader.GetOutput().GetScalarRange()))
+print('File Size (kb): ' + str(reader.GetOutput().GetActualMemorySize()))
+
 # Create colour transfer function
 colorFunc = vtk.vtkColorTransferFunction()
 colorFunc.AddRGBPoint(-3024, 0.0, 0.0, 0.0)
@@ -28,7 +34,7 @@ alphaChannelFunc.AddPoint(3071, 0.89)
 
 # Set render window
 renWin = vtk.vtkRenderWindow()
-renWin.SetSize(1200, 800)
+renWin.SetSize(1800, 1200)
 
 # Set renderer for 3 viewports
 ren = [vtk.vtkRenderer() for i in range(3)]
@@ -74,22 +80,22 @@ ren[1].AddActor(sampledCTActor)
 
 def UpdateSampleHistogram(obj, ev):
     # For viewport 3, construct the histogram of the sampled data using vtkImageAccumulate class
-    accumulate = vtk.vtkImageAccumulate()
+    histogram = vtk.vtkImageAccumulate()
 
     # retrieve the scalar range of the plane widget using GetScalarRange()
     range = obj.GetResliceOutput().GetScalarRange()
     r = int(range[1] - range[0])
 
     # using GetResliceOutput() function to get sampled data from vtkImagePlaneWidget object
-    accumulate.SetInputData(obj.GetResliceOutput())
-    accumulate.SetComponentExtent(0, r - 1, 0, 0, 0, 0)
-    accumulate.SetComponentOrigin(range[0], 0.0, 0.0)
-    accumulate.SetComponentSpacing(100, 0, 0)
-    accumulate.Update()
+    histogram.SetInputData(obj.GetResliceOutput())
+    histogram.SetComponentExtent(0, r - 1, 0, 0, 0, 0)
+    histogram.SetComponentOrigin(range[0], 0.0, 0.0)
+    histogram.SetComponentSpacing(100, 0, 0)
+    histogram.Update()
 
     # In viewport 3, using vtkXYPlotActor class for plotting the histogram
     plot = vtk.vtkXYPlotActor()
-    plot.AddDataSetInputConnection(accumulate.GetOutputPort())
+    plot.AddDataSetInputConnection(histogram.GetOutputPort())
     plot.SetXRange(range[0], range[1])
     plot.SetLabelFormat("%g")
     plot.SetXTitle("Scalar Value")
@@ -102,4 +108,7 @@ planeWidget.AddObserver('EndInteractionEvent', UpdateSampleHistogram)
 
 # Render the scene
 renWin.Render()
+
+# Calculate Histogram after rendering
+UpdateSampleHistogram(planeWidget, '')
 iren.Start()
